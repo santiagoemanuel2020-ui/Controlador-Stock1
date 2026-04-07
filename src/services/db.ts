@@ -19,7 +19,8 @@ export async function findUserByEmail(email: string): Promise<User | null> {
 
 export async function createUser(
   email: string,
-  password: string
+  password: string,
+  role: 'owner' | 'employee' = 'employee'
 ): Promise<User> {
   const password_hash = await hashPassword(password);
 
@@ -28,6 +29,7 @@ export async function createUser(
     .insert({
       email: email.toLowerCase(),
       password_hash,
+      role,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } as any)
     .select()
@@ -37,9 +39,14 @@ export async function createUser(
   return data as User;
 }
 
-// ──────────────────────────────────────────────
-// ACCESS CODES
-// ──────────────────────────────────────────────
+export async function getUserCount(): Promise<number> {
+  const { count, error } = await getSupabaseAdmin()
+    .from('users')
+    .select('*', { count: 'exact', head: true });
+
+  if (error) throw new Error(`Error obteniendo conteo de usuarios: ${error.message}`);
+  return count || 0;
+}
 
 export async function validateAccessCode(code: string): Promise<AccessCode | null> {
   const { data, error } = await getSupabaseAdmin()
@@ -83,9 +90,15 @@ export async function incrementCodeUsage(codeId: string): Promise<void> {
   }
 }
 
-// ──────────────────────────────────────────────
-// PRODUCTS
-// ──────────────────────────────────────────────
+export async function getAllProducts(): Promise<Product[]> {
+  const { data, error } = await getSupabaseAdmin()
+    .from('products')
+    .select('*')
+    .order('created_at', { ascending: false });
+
+  if (error) throw new Error(`Error obteniendo todos los productos: ${error.message}`);
+  return (data || []) as Product[];
+}
 
 export async function getProducts(userId: string): Promise<Product[]> {
   const { data, error } = await getSupabaseAdmin()
@@ -248,8 +261,8 @@ export async function recordStockMovement(
 // DASHBOARD
 // ──────────────────────────────────────────────
 
-export async function getDashboardStats(userId: string) {
-  const products = await getProducts(userId);
+export async function getDashboardStats(userId: string, role: 'owner' | 'employee') {
+  const products = role === 'owner' ? await getAllProducts() : await getProducts(userId);
   const movements = await getMovements(userId, 10);
 
   const totalProducts = products.length;

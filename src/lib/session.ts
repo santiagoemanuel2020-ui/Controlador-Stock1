@@ -9,8 +9,8 @@ const MAX_AGE = 60 * 60 * 24 * 7; // 7 días
 /**
  * Crea un JWT y lo guarda en una cookie segura httpOnly.
  */
-export async function createSession(userId: string, email: string): Promise<void> {
-  const token = jwt.sign({ userId, email }, JWT_SECRET, {
+export async function createSession(userId: string, email: string, role: 'owner' | 'employee'): Promise<void> {
+  const token = jwt.sign({ userId, email, role }, JWT_SECRET, {
     expiresIn: '7d',
   });
 

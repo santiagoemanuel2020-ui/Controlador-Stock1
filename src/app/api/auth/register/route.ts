@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { findUserByEmail, createUser, validateAccessCode, incrementCodeUsage } from '@/services/db';
+import { findUserByEmail, createUser, validateAccessCode, incrementCodeUsage, getUserCount } from '@/services/db';
 import { createSession } from '@/lib/session';
 
 /**
@@ -44,14 +44,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Determinar rol: primer usuario es owner, los demás employee
+    const userCount = await getUserCount();
+    const role = userCount === 0 ? 'owner' : 'employee';
+
     // Crear usuario
-    const user = await createUser(email, password);
+    const user = await createUser(email, password, role);
 
     // Incrementar uso del código
     await incrementCodeUsage(validCode.id);
 
     // Crear sesión automáticamente
-    await createSession(user.id, user.email);
+    await createSession(user.id, user.email, user.role);
 
     return NextResponse.json(
       { success: true, message: 'Cuenta creada exitosamente' },

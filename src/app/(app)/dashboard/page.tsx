@@ -7,7 +7,7 @@ export default async function DashboardPage() {
   const session = await getSession();
   if (!session) redirect('/login');
 
-  const stats = await getDashboardStats(session.userId);
+  const stats = await getDashboardStats(session.userId, session.role);
 
   return (
     <div className="animate-fade-in">
@@ -49,22 +49,24 @@ export default async function DashboardPage() {
           </div>
         </div>
 
-        {/* Stock Value */}
-        <div className="bg-white rounded-xl border border-slate-200 p-6">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
-              <svg className="w-6 h-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-            <div>
-              <p className="text-sm text-slate-500">Valor del stock</p>
-              <p className="text-2xl font-bold text-green-600">
-                ${stats.totalStockValue.toLocaleString('es-AR')}
-              </p>
+        {/* Stock Value - Only for owners */}
+        {session.role === 'owner' && (
+          <div className="bg-white rounded-xl border border-slate-200 p-6">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
+                <svg className="w-6 h-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <div>
+                <p className="text-sm text-slate-500">Valor total del stock</p>
+                <p className="text-2xl font-bold text-green-600">
+                  ${stats.totalStockValue.toLocaleString('es-AR')}
+                </p>
+              </div>
             </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* Low Stock Alert */}

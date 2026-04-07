@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/session';
-import { getProducts, createProduct } from '@/services/db';
+import { getProducts, createProduct, getAllProducts } from '@/services/db';
 
 // GET /api/products
 export async function GET() {
@@ -8,7 +8,7 @@ export async function GET() {
   if (!session) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
 
   try {
-    const products = await getProducts(session.userId);
+    const products = session.role === 'owner' ? await getAllProducts() : await getProducts(session.userId);
     return NextResponse.json(products);
   } catch (err) {
     return NextResponse.json(

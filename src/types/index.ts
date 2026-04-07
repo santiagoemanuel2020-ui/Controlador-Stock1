@@ -2,6 +2,7 @@ export interface User {
   id: string;
   email: string;
   password_hash: string;
+  role: 'owner' | 'employee';
   created_at: string;
 }
 
@@ -37,6 +38,7 @@ export interface Movement {
 export interface Session {
   userId: string;
   email: string;
+  role: 'owner' | 'employee';
   iat: number;
   exp: number;
 }
