@@ -1,0 +1,617 @@
+'use client';
+
+import { useState, useEffect, FormEvent, useRef } from 'react';
+import * as XLSX from 'xlsx';
+import jsPDF from 'jspdf';
+
+interface Product {
+  id: string;
+  name: string;
+  price: number;
+  stock: number;
+  category: string;
+  created_at: string;
+}
+
+export default function ProductsPage() {
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showModal, setShowModal] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [formName, setFormName] = useState('');
+  const [formPrice, setFormPrice] = useState('');
+  const [formStock, setFormStock] = useState('');
+  const [formCategory, setFormCategory] = useState('');
+  const [formLoading, setFormLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [search, setSearch] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [importLoading, setImportLoading] = useState(false);
+  const [importMode, setImportMode] = useState<'upsert' | 'replace'>('upsert');
+
+  useEffect(() => {
+    fetchProducts();
+  }, []);
+
+  const fetchProducts = async () => {
+    try {
+      const res = await fetch('/api/products');
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setProducts(data);
+    } catch {
+      setError('Error al cargar productos');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const resetForm = () => {
+    setFormName('');
+    setFormPrice('');
+    setFormStock('');
+    setFormCategory('');
+    setEditingProduct(null);
+    setShowModal(false);
+    setError('');
+    setSuccess('');
+  };
+
+  const openEdit = (product: Product) => {
+    setEditingProduct(product);
+    setFormName(product.name);
+    setFormPrice(product.price.toString());
+    setFormStock(product.stock.toString());
+    setFormCategory(product.category);
+    setShowModal(true);
+  };
+
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setSuccess('');
+
+    // Validaciones del formulario
+    const trimmedName = formName.trim();
+    if (!trimmedName) {
+      setError('El nombre del producto no puede estar vacío');
+      return;
+    }
+    if (trimmedName.length < 2) {
+      setError('El nombre debe tener al menos 2 caracteres');
+      return;
+    }
+
+    const price = parseFloat(formPrice);
+    if (isNaN(price) || price < 0) {
+      setError('El precio no puede ser negativo');
+      return;
+    }
+
+    const stock = parseInt(formStock);
+    if (isNaN(stock) || stock < 0) {
+      setError('El stock no puede ser negativo');
+      return;
+    }
+
+    setFormLoading(true);
+
+    try {
+      const url = editingProduct
+        ? `/api/products/${editingProduct.id}`
+        : '/api/products';
+      const method = editingProduct ? 'PUT' : 'POST';
+
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: trimmedName,
+          price,
+          stock,
+          category: formCategory.trim(),
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+
+      await fetchProducts();
+      resetForm();
+      setSuccess(editingProduct ? 'Producto actualizado correctamente' : 'Producto creado correctamente');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error');
+    } finally {
+      setFormLoading(false);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('¿Eliminar este producto?')) return;
+    try {
+      const res = await fetch(`/api/products/${id}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      await fetchProducts();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error');
+    }
+  };
+
+  const exportPDF = () => {
+    const doc = new jsPDF();
+    const lowStock = products.filter((p) => p.stock < 5);
+
+    // Título
+    doc.setFontSize(18);
+    doc.text('Reporte de Faltantes', 14, 20);
+
+    doc.setFontSize(10);
+    doc.setTextColor(100);
+    doc.text(`Generado el ${new Date().toLocaleDateString('es-AR', { day: '2-digit', month: 'long', year: 'numeric' })}`, 14, 28);
+    doc.text(`Productos con faltante: ${lowStock.length}`, 14, 34);
+
+    if (lowStock.length === 0) {
+      doc.setFontSize(14);
+      doc.setTextColor(34, 197, 94);
+      doc.text('¡Todo en orden! No hay productos con stock bajo.', 14, 50);
+    } else {
+      // Tabla
+      const startY = 44;
+      const headers = ['Producto', 'Stock actual', 'Mínimo', 'Estado'];
+      const colStarts = [14, 84, 114, 139];
+
+      // Header de tabla
+      doc.setFillColor(15, 23, 42);
+      doc.rect(14, startY, 166, 10, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'bold');
+      headers.forEach((h, i) => {
+        doc.text(h, colStarts[i], startY + 7);
+      });
+
+      // Filas
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9);
+      lowStock.forEach((p, i) => {
+        const y = startY + 16 + i * 10;
+        const isOutOfStock = p.stock === 0;
+
+        if (isOutOfStock) {
+          doc.setFillColor(254, 226, 226);
+        } else {
+          doc.setFillColor(254, 249, 195);
+        }
+        doc.rect(14, y, 166, 9, 'F');
+
+        doc.setTextColor(15, 23, 42);
+        doc.text(p.name.length > 28 ? p.name.substring(0, 28) + '...' : p.name, colStarts[0], y + 6);
+
+        doc.setTextColor(isOutOfStock ? 220 : 217, isOutOfStock ? 38 : 119, isOutOfStock ? 38 : 3);
+        doc.setFont('helvetica', 'bold');
+        doc.text(String(p.stock), colStarts[1], y + 6);
+
+        doc.setTextColor(100);
+        doc.setFont('helvetica', 'normal');
+        doc.text('5', colStarts[2], y + 6);
+
+        doc.setTextColor(isOutOfStock ? 220 : 217, isOutOfStock ? 38 : 180, isOutOfStock ? 38 : 83);
+        doc.text(isOutOfStock ? 'SIN STOCK' : 'BAJO', colStarts[3], y + 6);
+      });
+
+      // Resumen al final
+      const summaryY = startY + 16 + lowStock.length * 10 + 12;
+      const totalMissing = lowStock.reduce((acc, p) => acc + Math.max(0, 5 - p.stock), 0);
+      doc.setFontSize(10);
+      doc.setTextColor(15, 23, 42);
+      doc.setFont('helvetica', 'bold');
+      doc.text(`Total unidades faltantes: ${totalMissing}`, 14, summaryY);
+      doc.text(`Productos sin stock: ${lowStock.filter((p) => p.stock === 0).length}`, 14, summaryY + 7);
+      doc.text(`Productos con stock bajo: ${lowStock.filter((p) => p.stock > 0 && p.stock < 5).length}`, 14, summaryY + 14);
+    }
+
+    // Footer
+    doc.setFontSize(8);
+    doc.setTextColor(150);
+    doc.setFont('helvetica', 'normal');
+    doc.text('StockControl — Sistema de Gestión de Inventario', 14, 285);
+
+    doc.save(`faltantes_${new Date().toISOString().split('T')[0]}.pdf`);
+  };
+
+  const importExcel = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setError('');
+    setSuccess('');
+    setImportLoading(true);
+
+    try {
+      // Leer archivo Excel
+      const arrayBuffer = await file.arrayBuffer();
+      const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+      const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+
+      if (!worksheet) {
+        throw new Error('No se encontró hoja de cálculo en el archivo');
+      }
+
+      // Convertir a JSON
+      const data = XLSX.utils.sheet_to_json(worksheet);
+
+      if (data.length === 0) {
+        throw new Error('El archivo no contiene datos');
+      }
+
+      // Mapear datos según columnas (flexible: nombre/Nombre, precio/Precio, stock/Stock, etc.)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const products = data.map((row: any) => {
+        const name =
+          row.nombre ||
+          row.Nombre ||
+          row.nombre_producto ||
+          row.Nombre_Producto ||
+          row['Nombre'] ||
+          '';
+
+        const price = parseFloat(
+          row.precio ||
+          row.Precio ||
+          row.precio_unitario ||
+          row.Precio_Unitario ||
+          row['Precio'] ||
+          '0'
+        );
+
+        const stock = parseInt(
+          row.stock ||
+          row.Stock ||
+          row.cantidad ||
+          row.Cantidad ||
+          row['Stock'] ||
+          '0'
+        );
+
+        const category =
+          row.categoría ||
+          row.Categoría ||
+          row.categoria ||
+          row.Categoria ||
+          row['Categoría'] ||
+          row['Categoria'] ||
+          '';
+
+        return {
+          name: String(name).trim(),
+          price: isNaN(price) ? 0 : price,
+          stock: isNaN(stock) ? 0 : stock,
+          category: String(category).trim(),
+        };
+      });
+
+      // Validar que al menos haya un producto válido
+      const validProducts = products.filter((p) => p.name.length > 0);
+      if (validProducts.length === 0) {
+        throw new Error('No se encontraron productos válidos (verifica que haya una columna "Nombre")');
+      }
+
+      // Enviar al backend
+      const res = await fetch('/api/products/import', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ products: validProducts, mode: importMode }),
+      });
+
+      const result = await res.json();
+
+      if (!res.ok) {
+        throw new Error(result.error || 'Error al importar productos');
+      }
+
+      await fetchProducts();
+      
+      const modeText = importMode === 'upsert' ? 'actualizado(s)' : 'reemplazado(s)';
+      setSuccess(`✅ ${result.created || 0} nuevo(s), ${result.updated || 0} ${modeText}. Total: ${result.total} producto(s). ${result.errors?.length ? `⚠️ ${result.errors.length} fila(s) no válida(s)` : ''}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al importar el Excel');
+    } finally {
+      setImportLoading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  const filtered = products.filter(
+    (p) =>
+      p.name.toLowerCase().includes(search.toLowerCase()) ||
+      p.category.toLowerCase().includes(search.toLowerCase())
+  );
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="spinner" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="animate-fade-in">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8 gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">Productos</h1>
+          <p className="text-slate-500 mt-1">{products.length} productos registrados</p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={importLoading}
+            className="px-4 py-2.5 bg-white border border-slate-300 rounded-xl text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors flex items-center gap-2 disabled:opacity-60"
+          >
+            {importLoading ? (
+              <>
+                <div className="spinner" />
+                Importando...
+              </>
+            ) : (
+              <>
+                <svg className="w-4 h-4 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                </svg>
+                Importar Excel
+              </>
+            )}
+          </button>
+          <select
+            value={importMode}
+            onChange={(e) => setImportMode(e.target.value as 'upsert' | 'replace')}
+            className="px-3 py-2 border border-slate-300 rounded-xl text-sm bg-white"
+            title="Modo de importación"
+          >
+            <option value="upsert">Agregar y Actualizar</option>
+            <option value="replace">Reemplazar todo</option>
+          </select>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".xlsx,.xls"
+            onChange={importExcel}
+            className="hidden"
+          />
+          <button
+            onClick={exportPDF}
+            className="px-4 py-2.5 bg-white border border-slate-300 rounded-xl text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors flex items-center gap-2"
+          >
+            <svg className="w-4 h-4 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+            </svg>
+            Reporte Faltantes
+          </button>
+          <button
+            onClick={() => { resetForm(); setShowModal(true); }}
+            className="px-4 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 transition-colors flex items-center gap-2"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+            </svg>
+            Nuevo producto
+          </button>
+        </div>
+      </div>
+
+      {/* Search */}
+      <div className="mb-6">
+        <input
+          type="text"
+          placeholder="Buscar por nombre o categoría..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="w-full sm:w-80 px-4 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+        />
+      </div>
+
+      {/* Error */}
+      {error && (
+        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm flex items-start gap-2 animate-fade-in">
+          <svg className="w-5 h-5 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          {error}
+        </div>
+      )}
+
+      {/* Success */}
+      {success && (
+        <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-xl text-green-700 text-sm flex items-start gap-2 animate-fade-in">
+          <svg className="w-5 h-5 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          {success}
+        </div>
+      )}
+
+      {/* Table */}
+      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+        {filtered.length === 0 ? (
+          <div className="p-12 text-center text-slate-500">
+            <svg className="w-16 h-16 mx-auto mb-4 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+            </svg>
+            <p className="font-medium">No hay productos</p>
+            <p className="text-sm mt-1">Creá tu primer producto para empezar</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="bg-slate-50 border-b border-slate-200">
+                  <th className="text-left px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Nombre</th>
+                  <th className="text-left px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Categoría</th>
+                  <th className="text-right px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Precio</th>
+                  <th className="text-right px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Stock</th>
+                  <th className="text-right px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Acciones</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {filtered.map((product) => (
+                  <tr key={product.id} className="hover:bg-slate-50 transition-colors">
+                    <td className="px-6 py-4">
+                      <span className="text-sm font-medium text-slate-900">{product.name}</span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="inline-flex px-2.5 py-1 rounded-lg bg-slate-100 text-xs font-medium text-slate-600">
+                        {product.category || 'Sin categoría'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <span className="text-sm text-slate-700">${product.price.toLocaleString('es-AR')}</span>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-sm font-semibold ${
+                        product.stock === 0
+                          ? 'bg-red-100 text-red-700'
+                          : product.stock < 5
+                            ? 'bg-yellow-100 text-yellow-700'
+                            : 'bg-green-100 text-green-700'
+                      }`}>
+                        {product.stock === 0 && (
+                          <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                          </svg>
+                        )}
+                        {product.stock > 0 && product.stock < 5 && (
+                          <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                          </svg>
+                        )}
+                        {product.stock >= 5 && (
+                          <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                          </svg>
+                        )}
+                        {product.stock}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        <button
+                          onClick={() => openEdit(product)}
+                          className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                          title="Editar"
+                        >
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                          </svg>
+                        </button>
+                        <button
+                          onClick={() => handleDelete(product.id)}
+                          className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                          title="Eliminar"
+                        >
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Modal */}
+      {showModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={resetForm}>
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md animate-fade-in" onClick={(e) => e.stopPropagation()}>
+            <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-slate-900">
+                {editingProduct ? 'Editar producto' : 'Nuevo producto'}
+              </h2>
+              <button onClick={resetForm} className="text-slate-400 hover:text-slate-600">
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <form onSubmit={handleSubmit} className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">Nombre</label>
+                <input
+                  type="text"
+                  value={formName}
+                  onChange={(e) => setFormName(e.target.value)}
+                  required
+                  className="w-full px-4 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Precio</label>
+                  <input
+                    type="number"
+                    value={formPrice}
+                    onChange={(e) => setFormPrice(e.target.value)}
+                    required
+                    min="0"
+                    step="0.01"
+                    className="w-full px-4 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Stock inicial</label>
+                  <input
+                    type="number"
+                    value={formStock}
+                    onChange={(e) => setFormStock(e.target.value)}
+                    required
+                    min="0"
+                    className="w-full px-4 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">Categoría</label>
+                <input
+                  type="text"
+                  value={formCategory}
+                  onChange={(e) => setFormCategory(e.target.value)}
+                  placeholder="Ej: Electrónica, Alimentos..."
+                  className="w-full px-4 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={resetForm}
+                  className="flex-1 px-4 py-2.5 border border-slate-300 rounded-xl text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={formLoading}
+                  className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 disabled:bg-blue-400 transition-colors flex items-center justify-center gap-2"
+                >
+                  {formLoading ? (
+                    <>
+                      <div className="spinner" />
+                      Guardando...
+                    </>
+                  ) : editingProduct ? 'Actualizar' : 'Crear producto'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
