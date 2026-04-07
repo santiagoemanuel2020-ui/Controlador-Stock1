@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { findUserByEmail, createUser, validateAccessCode, incrementCodeUsage, createCompany } from '@/services/db';
+import { findUserByEmail, createUser, lookupAccessCodeGlobal, incrementCodeUsage, createCompany } from '@/services/db';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { createSession } from '@/lib/session';
 
@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
       role = 'owner';
     } else {
       // Flujo 2: Empleado (usa código de acceso)
-      const accessCodeData = await validateAccessCode(accessCode);
+      const accessCodeData = await lookupAccessCodeGlobal(accessCode);
       if (!accessCodeData) {
         return NextResponse.json(
           { error: 'Código de acceso inválido o agotado' },

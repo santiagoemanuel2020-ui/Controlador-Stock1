@@ -12,8 +12,8 @@ export async function GET() {
 
   try {
     const [products, movements] = await Promise.all([
-      getProducts(session.userId),
-      getMovements(session.userId, 1000),
+      getProducts(session.companyId, session.userId),
+      getMovements(session.companyId, session.userId, 1000),
     ]);
 
     return NextResponse.json({

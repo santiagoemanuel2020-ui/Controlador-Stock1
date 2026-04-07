@@ -7,7 +7,8 @@ import type { User, AccessCode, Product, Movement, Company } from '@/types';
 // ──────────────────────────────────────────────
 
 export async function createCompany(name: string): Promise<Company> {
-  const { data, error } = await getSupabaseAdmin()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (getSupabaseAdmin() as any)
     .from('companies')
     .insert({ name })
     .select()
@@ -72,6 +73,25 @@ export async function validateAccessCode(companyId: string, code: string): Promi
     .from('access_codes')
     .select('*')
     .eq('company_id', companyId)
+    .eq('code', code.trim())
+    .single();
+
+  if (error || !data) return null;
+
+  const accessCode = data as AccessCode;
+
+  // Verificar que no esté agotado
+  if (accessCode.used_count >= accessCode.max_uses) {
+    return null;
+  }
+
+  return accessCode;
+}
+
+export async function lookupAccessCodeGlobal(code: string): Promise<AccessCode | null> {
+  const { data, error } = await getSupabaseAdmin()
+    .from('access_codes')
+    .select('*')
     .eq('code', code.trim())
     .single();
 
@@ -283,9 +303,11 @@ export async function recordStockMovement(
   // Registrar movimiento
   const movement = await createMovement(companyId, userId, {
     product_id: productId,
+    user_id: userId,
     quantity,
     type,
-  });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } as any);
 
   return { movement, newStock };
 }

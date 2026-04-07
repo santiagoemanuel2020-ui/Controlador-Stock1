@@ -23,7 +23,8 @@ export async function POST(request: NextRequest) {
     // Buscar la company por nombre
     let companyId: string | null = null;
     if (companyName) {
-      const { data: company } = await getSupabaseAdmin()
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: company } = await (getSupabaseAdmin() as any)
         .from('companies')
         .select('id')
         .eq('name', companyName)
@@ -35,7 +36,8 @@ export async function POST(request: NextRequest) {
           { status: 404 }
         );
       }
-      companyId = company.id;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      companyId = (company as any).id;
     } else {
       // Si no se proporciona companyName, buscar si el email existe en alguna company
       // Esto es un caso edge, principalmente para backwards compatibility
