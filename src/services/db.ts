@@ -262,12 +262,16 @@ export async function recordStockMovement(
 // ──────────────────────────────────────────────
 
 export async function getDashboardStats(userId: string, role: 'owner' | 'employee') {
-  const products = role === 'owner' ? await getAllProducts() : await getProducts(userId);
+  const products = await getAllProducts();
   const movements = await getMovements(userId, 10);
 
   const totalProducts = products.length;
   const lowStockProducts = products.filter((p) => p.stock < 5);
-  const totalStockValue = products.reduce((acc, p) => acc + p.price * p.stock, 0);
+  
+  // Solo el owner ve el valor total del stock
+  const totalStockValue = role === 'owner' 
+    ? products.reduce((acc, p) => acc + p.price * p.stock, 0)
+    : 0;
 
   return {
     totalProducts,

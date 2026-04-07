@@ -8,7 +8,8 @@ export async function GET() {
   if (!session) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
 
   try {
-    const products = session.role === 'owner' ? await getAllProducts() : await getProducts(session.userId);
+    // Todos ven todos los productos
+    const products = await getAllProducts();
     return NextResponse.json(products);
   } catch (err) {
     return NextResponse.json(
