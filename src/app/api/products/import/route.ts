@@ -66,6 +66,7 @@ export async function POST(request: NextRequest) {
       await db
         .from('products')
         .delete()
+        .eq('company_id', session.companyId)
         .eq('user_id', session.userId);
     }
 
@@ -73,6 +74,7 @@ export async function POST(request: NextRequest) {
     const { data: existingProducts } = await db
       .from('products')
       .select('id, name, stock')
+      .eq('company_id', session.companyId)
       .eq('user_id', session.userId);
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -106,6 +108,7 @@ export async function POST(request: NextRequest) {
         // Si hay incremento de stock, registrar movimiento de entrada
         if (stockDiff > 0) {
           movements.push({
+            company_id: session.companyId,
             product_id: existing.id,
             user_id: session.userId,
             quantity: stockDiff,
@@ -119,6 +122,7 @@ export async function POST(request: NextRequest) {
           price: p.price,
           stock: p.stock,
           category: p.category,
+          company_id: session.companyId,
           user_id: session.userId,
         });
 
@@ -152,6 +156,7 @@ export async function POST(request: NextRequest) {
       for (const p of newProducts) {
         if (p.stock > 0) {
           movements.push({
+            company_id: session.companyId,
             product_id: p.id,
             user_id: session.userId,
             quantity: p.stock,

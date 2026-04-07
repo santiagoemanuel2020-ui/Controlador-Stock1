@@ -1,19 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { findUserByEmail } from '@/services/db';
+import { getSupabaseAdmin } from '@/lib/supabase';
 import { verifyPassword } from '@/lib/auth';
 import { createSession } from '@/lib/session';
 
 /**
  * POST /api/auth/login
  *
- * Lógica unificada:
- * 1. Si el usuario existe → validar contraseña → crear sesión
- * 2. Si el usuario NO existe → retornar USER_NOT_FOUND para que el frontend
- *    muestre el campo de código de acceso
+ * Requiere email, password y companyName para identificar la empresa
  */
 export async function POST(request: NextRequest) {
   try {
-    const { email, password } = await request.json();
+    const { email, password, companyName } = await request.json();
 
     if (!email || !password) {
       return NextResponse.json(
@@ -22,13 +20,55 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Buscar la company por nombre
+    let companyId: string | null = null;
+    if (companyName) {
+      const { data: company } = await getSupabaseAdmin()
+        .from('companies')
+        .select('id')
+        .eq('name', companyName)
+        .single();
+
+      if (!company) {
+        return NextResponse.json(
+          { error: 'Empresa no encontrada' },
+          { status: 404 }
+        );
+      }
+      companyId = company.id;
+    } else {
+      // Si no se proporciona companyName, buscar si el email existe en alguna company
+      // Esto es un caso edge, principalmente para backwards compatibility
+      const { data: companies } = await getSupabaseAdmin()
+        .from('users')
+        .select('company_id')
+        .eq('email', email.toLowerCase())
+        .limit(1);
+
+      if ((companies?.length ?? 0) === 0) {
+        return NextResponse.json(
+          { error: 'Usuario no encontrado' },
+          { status: 404 }
+        );
+      }
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      companyId = (companies as any)[0].company_id;
+    }
+
     // Buscar usuario
-    const user = await findUserByEmail(email);
+    if (!companyId) {
+      return NextResponse.json(
+        { error: 'No fue posible identificar la empresa' },
+        { status: 400 }
+      );
+    }
+
+    const user = await findUserByEmail(email, companyId);
 
     if (!user) {
-      // Usuario no existe → el frontend debe mostrar el campo de código
       return NextResponse.json(
-        { error: 'Usuario no encontrado', code: 'USER_NOT_FOUND' },
+        { error: 'Usuario no encontrado en esta empresa' },
         { status: 404 }
       );
     }
@@ -44,7 +84,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Crear sesión
-    await createSession(user.id, user.email, user.role);
+    await createSession(user.id, companyId, user.email, user.role);
 
     return NextResponse.json({ success: true });
   } catch (error) {

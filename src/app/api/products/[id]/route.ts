@@ -12,7 +12,7 @@ export async function PUT(
 
   try {
     const body = await request.json();
-    const product = await updateProduct(params.id, session.userId, {
+    const product = await updateProduct(session.companyId, params.id, session.userId, {
       name: body.name,
       price: body.price,
       stock: body.stock,
@@ -36,7 +36,7 @@ export async function DELETE(
   if (!session) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
 
   try {
-    await deleteProduct(params.id, session.userId);
+    await deleteProduct(session.companyId, params.id, session.userId);
     return NextResponse.json({ success: true });
   } catch (err) {
     return NextResponse.json(

@@ -8,7 +8,7 @@ export async function GET() {
   if (!session) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
 
   try {
-    const movements = await getMovements(session.userId);
+    const movements = await getMovements(session.companyId, session.userId);
     return NextResponse.json(movements);
   } catch (err) {
     return NextResponse.json(
@@ -35,6 +35,7 @@ export async function POST(request: NextRequest) {
     }
 
     const result = await recordStockMovement(
+      session.companyId,
       session.userId,
       productId,
       parseInt(quantity),

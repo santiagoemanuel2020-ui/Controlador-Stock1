@@ -1,5 +1,12 @@
+export interface Company {
+  id: string;
+  name: string;
+  created_at: string;
+}
+
 export interface User {
   id: string;
+  company_id: string;
   email: string;
   password_hash: string;
   role: 'owner' | 'employee';
@@ -8,6 +15,7 @@ export interface User {
 
 export interface AccessCode {
   id: string;
+  company_id: string;
   code: string;
   max_uses: number;
   used_count: number;
@@ -16,6 +24,7 @@ export interface AccessCode {
 
 export interface Product {
   id: string;
+  company_id: string;
   user_id: string;
   name: string;
   price: number;
@@ -26,6 +35,7 @@ export interface Product {
 
 export interface Movement {
   id: string;
+  company_id: string;
   product_id: string;
   user_id: string;
   quantity: number;
@@ -37,6 +47,7 @@ export interface Movement {
 
 export interface Session {
   userId: string;
+  companyId: string;
   email: string;
   role: 'owner' | 'employee';
   iat: number;

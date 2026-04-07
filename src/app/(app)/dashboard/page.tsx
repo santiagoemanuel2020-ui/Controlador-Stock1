@@ -7,7 +7,7 @@ export default async function DashboardPage() {
   const session = await getSession();
   if (!session) redirect('/login');
 
-  const stats = await getDashboardStats(session.userId, session.role);
+  const stats = await getDashboardStats(session.companyId, session.userId, session.role);
 
   return (
     <div className="animate-fade-in">
