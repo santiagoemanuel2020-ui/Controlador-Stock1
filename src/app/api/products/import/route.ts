@@ -11,10 +11,6 @@ interface ImportProduct {
 
 /**
  * POST /api/products/import
- * Importa productos con lógica "upsert":
- * - Si el producto ya existe (por nombre) → actualiza price, stock, category
- * - Si no existe → crea nuevo
- * - Registra movimientos de entrada para productos nuevos o con incremento de stock
  */
 export async function POST(request: NextRequest) {
   const session = await getSession();
@@ -23,7 +19,7 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const products: ImportProduct[] = body.products;
-    const mode = body.mode || 'upsert'; // 'upsert' (actualiza) o 'replace' (borra todo)
+    const mode = body.mode || 'upsert';
 
     if (!Array.isArray(products) || products.length === 0) {
       return NextResponse.json(
@@ -32,7 +28,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validar cada producto
     const errors: string[] = [];
     const validProducts: ImportProduct[] = [];
 
@@ -56,33 +51,29 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const supabase = getSupabaseAdmin();
-
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const db = supabase as any;
+    const db = getSupabaseAdmin() as any;
 
     // Si mode es 'replace', primero borramos todos los productos del usuario
     if (mode === 'replace') {
       await db
         .from('products')
         .delete()
-        .eq('company_id', session.companyId)
         .eq('user_id', session.userId);
     }
 
-    // Obtener productos existentes del usuario (para comparar stock)
+    // Obtener productos existentes del usuario
     const { data: existingProducts } = await db
       .from('products')
       .select('id, name, stock')
-      .eq('company_id', session.companyId)
       .eq('user_id', session.userId);
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const existingByName = new Map<string, { id: string; name: string; stock: number }>(
-      (existingProducts || []).map((p: { id: string; name: string; stock: number }) => [p.name.toLowerCase(), p])
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (existingProducts || []).map((p: any) => [p.name.toLowerCase(), p])
     );
 
-    // Procesar cada producto
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const productsToInsert: any[] = [];
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -94,7 +85,6 @@ export async function POST(request: NextRequest) {
       const existing = existingByName.get(p.name.toLowerCase());
 
       if (existing) {
-        // El producto ya existe - actualizar
         const stockDiff = p.stock - existing.stock;
         
         productsToUpdate.push({
@@ -105,10 +95,8 @@ export async function POST(request: NextRequest) {
           category: p.category,
         });
 
-        // Si hay incremento de stock, registrar movimiento de entrada
         if (stockDiff > 0) {
           movements.push({
-            company_id: session.companyId,
             product_id: existing.id,
             user_id: session.userId,
             quantity: stockDiff,
@@ -116,27 +104,19 @@ export async function POST(request: NextRequest) {
           });
         }
       } else {
-        // Producto nuevo - insertar
         productsToInsert.push({
           name: p.name,
           price: p.price,
           stock: p.stock,
           category: p.category,
-          company_id: session.companyId,
           user_id: session.userId,
         });
-
-        // Registrar movimiento de entrada para stock inicial
-        if (p.stock > 0) {
-          // We'll add the product_id after insertion
-        }
       }
     }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let newProducts: any[] = [];
 
-    // Insertar productos nuevos
     if (productsToInsert.length > 0) {
       const { data: inserted, error: insertError } = await db
         .from('products')
@@ -152,11 +132,9 @@ export async function POST(request: NextRequest) {
 
       newProducts = inserted || [];
 
-      // Agregar movimientos para productos nuevos con stock inicial
       for (const p of newProducts) {
         if (p.stock > 0) {
           movements.push({
-            company_id: session.companyId,
             product_id: p.id,
             user_id: session.userId,
             quantity: p.stock,
@@ -166,7 +144,6 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Actualizar productos existentes
     for (const p of productsToUpdate) {
       await db
         .from('products')
@@ -179,7 +156,6 @@ export async function POST(request: NextRequest) {
         .eq('id', p.id);
     }
 
-    // Registrar todos los movimientos
     if (movements.length > 0) {
       await db
         .from('movements')

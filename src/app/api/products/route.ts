@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/session';
-import { createProduct, getAllProducts } from '@/services/db';
+import { createProduct, getProducts } from '@/services/db';
 
 // GET /api/products
 export async function GET() {
@@ -8,8 +8,7 @@ export async function GET() {
   if (!session) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
 
   try {
-    // Todos ven todos los productos de la empresa
-    const products = await getAllProducts(session.companyId);
+    const products = await getProducts(session.userId);
     return NextResponse.json(products);
   } catch (err) {
     return NextResponse.json(
@@ -30,7 +29,7 @@ export async function POST(request: NextRequest) {
 
     if (!name) return NextResponse.json({ error: 'El nombre es requerido' }, { status: 400 });
 
-    const product = await createProduct(session.companyId, session.userId, {
+    const product = await createProduct(session.userId, {
       name,
       price: price || 0,
       stock: stock || 0,

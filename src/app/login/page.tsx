@@ -21,19 +21,12 @@ export default function LoginPage() {
       const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password, accessCode }),
+        body: JSON.stringify({ email, password }),
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        // Si el usuario no existe, mostrar campo de código
-        if (data.code === 'USER_NOT_FOUND') {
-          setIsRegistering(true);
-          setError('');
-          setLoading(false);
-          return;
-        }
         throw new Error(data.error || 'Error desconocido');
       }
 
@@ -56,7 +49,11 @@ export default function LoginPage() {
       const response = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password, accessCode }),
+        body: JSON.stringify({
+          email: email.trim(),
+          password,
+          accessCode: accessCode.trim(),
+        }),
       });
 
       const data = await response.json();
@@ -138,84 +135,60 @@ export default function LoginPage() {
               />
             </div>
 
-            {/* Access Code (solo al registrar) */}
+            {/* Access Code (register) */}
             {isRegistering && (
-              <div className="animate-fade-in">
+              <div>
                 <label htmlFor="accessCode" className="block text-sm font-medium text-slate-700 mb-1.5">
-                  Código de acceso
+                  Código de acceso (opcional)
                 </label>
                 <input
                   id="accessCode"
                   type="text"
                   value={accessCode}
                   onChange={(e) => setAccessCode(e.target.value)}
-                  required
-                  placeholder="XXXX-XXXX-XXXX"
-                  className="w-full px-4 py-3 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all font-mono tracking-wider"
+                  placeholder="Si tenés un código, ingrésalo aquí"
+                  className="w-full px-4 py-3 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                   disabled={loading}
                 />
-                <p className="mt-1.5 text-xs text-slate-500">
-                  Ingresá el código que recibiste al comprar el producto
+                <p className="text-xs text-slate-500 mt-1.5">
+                  Si compraste el sistema, ingresá tu código de acceso
                 </p>
               </div>
             )}
 
-            {/* Submit */}
+            {/* Submit Button */}
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-medium py-3 px-4 rounded-xl transition-colors flex items-center justify-center gap-2 text-sm"
+              className="w-full py-3 px-4 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {loading ? (
                 <>
                   <div className="spinner" />
-                  <span>Procesando...</span>
+                  {isRegistering ? 'Creando cuenta...' : 'Iniciando sesión...'}
                 </>
-              ) : isRegistering ? (
-                'Crear cuenta y acceder'
               ) : (
-                'Iniciar sesión'
+                isRegistering ? 'Crear cuenta' : 'Iniciar sesión'
               )}
             </button>
           </form>
 
-          {/* Toggle mode */}
-          {!isRegistering && (
-            <div className="mt-6 pt-6 border-t border-slate-200 text-center">
-              <p className="text-sm text-slate-500">
-                ¿No tenés cuenta?{' '}
-                <button
-                  type="button"
-                  onClick={() => setIsRegistering(true)}
-                  className="text-blue-600 hover:text-blue-700 font-medium"
-                >
-                  Registrate con tu código
-                </button>
-              </p>
-            </div>
-          )}
-
-          {isRegistering && (
-            <div className="mt-6 pt-6 border-t border-slate-200 text-center animate-fade-in">
-              <button
-                type="button"
-                onClick={() => {
-                  setIsRegistering(false);
-                  setAccessCode('');
-                  setError('');
-                }}
-                className="text-sm text-slate-500 hover:text-slate-700"
-              >
-                ← Ya tengo cuenta, quiero iniciar sesión
-              </button>
-            </div>
-          )}
+          {/* Toggle */}
+          <div className="mt-6 text-center">
+            <button
+              onClick={() => {
+                setIsRegistering(!isRegistering);
+                setError('');
+              }}
+              className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+              disabled={loading}
+            >
+              {isRegistering
+                ? '¿Ya tenés cuenta? Iniciá sesión'
+                : '¿No tenés cuenta? Registrate'}
+            </button>
+          </div>
         </div>
-
-        {/* Footer */}
-        <p className="text-center text-slate-500 text-xs mt-8">
-          © {new Date().getFullYear()} StockControl. Todos los derechos reservados.
-        </p>
       </div>
     </div>
   );

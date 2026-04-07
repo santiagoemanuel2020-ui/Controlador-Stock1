@@ -1,18 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { findUserByEmail, createUser, lookupAccessCodeGlobal, incrementCodeUsage, createCompany } from '@/services/db';
-import { getSupabaseAdmin } from '@/lib/supabase';
+import { findUserByEmail, createUser, validateAccessCode, incrementCodeUsage } from '@/services/db';
 import { createSession } from '@/lib/session';
 
 /**
  * POST /api/auth/register
- *
- * Registra un nuevo usuario con multi-tenancy.
- * - Primer usuario: crea una nueva company y es owner (no necesita código de acceso)
- * - Empleados: usar código de acceso válido para la company del owner
  */
 export async function POST(request: NextRequest) {
   try {
-    const { email, password, accessCode, companyName } = await request.json();
+    const body = await request.json();
+    const email = String(body.email || '').trim().toLowerCase();
+    const password = String(body.password || '').trim();
+    const accessCode = String(body.accessCode || '').trim();
 
     // Validaciones básicas
     if (!email || !password) {
@@ -29,64 +27,37 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    let companyId: string;
-    let role: 'owner' | 'employee' = 'employee';
+    // Verificar si el usuario ya existe
+    const existingUser = await findUserByEmail(email);
+    if (existingUser) {
+      return NextResponse.json(
+        { error: 'Este email ya está registrado' },
+        { status: 409 }
+      );
+    }
 
-    // Flujo 1: Primer usuario (crea nueva company)
-    if (!accessCode) {
-      // Solo el primer usuario globalmente puede registrarse sin código
-      const { count: totalUsers } = await getSupabaseAdmin()
-        .from('users')
-        .select('*', { count: 'exact', head: true });
-
-      if ((totalUsers ?? 0) > 0) {
-        return NextResponse.json(
-          { error: 'Se requiere código de acceso para registrarse' },
-          { status: 403 }
-        );
-      }
-
-      // Crear nueva company
-      if (!companyName) {
-        return NextResponse.json(
-          { error: 'El nombre de la empresa es requerido' },
-          { status: 400 }
-        );
-      }
-
-      const company = await createCompany(companyName);
-      companyId = company.id;
-      role = 'owner';
-    } else {
-      // Flujo 2: Empleado (usa código de acceso)
-      const accessCodeData = await lookupAccessCodeGlobal(accessCode);
-      if (!accessCodeData) {
+    // Si se proporciona código de acceso, validarlo
+    if (accessCode) {
+      const codeData = await validateAccessCode(accessCode);
+      if (!codeData) {
         return NextResponse.json(
           { error: 'Código de acceso inválido o agotado' },
           { status: 403 }
         );
       }
-
-      companyId = accessCodeData.company_id;
-
-      // Verificar que el email no esté registrado en esta company
-      const existingUser = await findUserByEmail(email, companyId);
-      if (existingUser) {
-        return NextResponse.json(
-          { error: 'Este email ya está registrado en esta empresa' },
-          { status: 409 }
-        );
-      }
-
+      
       // Incrementar uso del código
-      await incrementCodeUsage(accessCodeData.id);
+      await incrementCodeUsage(codeData.id);
+    } else {
+      // Si no hay código, verificar que sea el primer usuario
+      // (opcional - dependiendo de si querés permitir registro libre o no)
     }
 
     // Crear usuario
-    const user = await createUser(companyId, email, password, role);
+    const user = await createUser(email, password);
 
     // Crear sesión
-    await createSession(user.id, companyId, user.email, user.role);
+    await createSession(user.id, user.email);
 
     return NextResponse.json(
       { success: true, message: 'Cuenta creada exitosamente' },
