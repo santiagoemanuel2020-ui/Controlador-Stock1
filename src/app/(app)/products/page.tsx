@@ -246,49 +246,60 @@ export default function ProductsPage() {
         throw new Error('El archivo no contiene datos');
       }
 
-      // Mapear datos según columnas (flexible: nombre/Nombre, precio/Precio, stock/Stock, etc.)
+      // Mapear datos según columnas (flexible)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const products = data.map((row: any) => {
-        const name =
-          row.nombre ||
-          row.Nombre ||
-          row.nombre_producto ||
-          row.Nombre_Producto ||
-          row['Nombre'] ||
-          '';
+        // Función helper para buscar valor con múltiples sinónimos
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const getValue = (obj: any, keys: string[]): string => {
+          for (const key of keys) {
+            if (obj[key] !== undefined && obj[key] !== null && String(obj[key]).trim() !== '') {
+              return String(obj[key]).trim();
+            }
+          }
+          return '';
+        };
 
-        const price = parseFloat(
-          row.precio ||
-          row.Precio ||
-          row.precio_unitario ||
-          row.Precio_Unitario ||
-          row['Precio'] ||
-          '0'
-        );
+        // Nombre del producto - múltiples sinónimos
+        const name = getValue(row, [
+          'nombre', 'Nombre', 'name', 'Name',
+          'nombre_producto', 'Nombre_Producto', 'producto', 'Producto',
+          'articulo', 'Artículo', 'artículo', 'Articulo',
+          'item', 'Item', 'descripcion', 'Descripcion', 'descripción',
+          'product', 'Product', 'article', 'Article'
+        ]);
 
-        const stock = parseInt(
-          row.stock ||
-          row.Stock ||
-          row.cantidad ||
-          row.Cantidad ||
-          row['Stock'] ||
-          '0'
-        );
+        // Precio - múltiples sinónimos
+        const priceStr = getValue(row, [
+          'precio', 'Precio', 'price', 'Price',
+          'precio_unitario', 'Precio_Unitario', 'costo', 'Costo',
+          'cost', 'valor', 'Valor', 'valor_unitario',
+          'unit_price', 'precio_unitario', 'valor_unitario'
+        ]);
+        const price = parseFloat(priceStr) || 0;
 
-        const category =
-          row.categoría ||
-          row.Categoría ||
-          row.categoria ||
-          row.Categoria ||
-          row['Categoría'] ||
-          row['Categoria'] ||
-          '';
+        // Stock - múltiples sinónimos
+        const stockStr = getValue(row, [
+          'stock', 'Stock', 'cantidad', 'Cantidad',
+          'existencia', 'Existencia', 'quantity', 'Quantity',
+          'qty', 'Qty', 'disponible', 'Disponible',
+          'disponibilidad', 'units', 'unidades'
+        ]);
+        const stock = parseInt(stockStr) || 0;
+
+        // Categoría - múltiples sinónimos
+        const category = getValue(row, [
+          'categoria', 'Categoria', 'categoría', 'Categoría',
+          'category', 'Category', 'rubro', 'Rubro',
+          'tipo', 'Tipo', 'seccion', 'Sección', 'sección',
+          'grupo', 'Grupo', 'familia', 'Familia'
+        ]);
 
         return {
-          name: String(name).trim(),
+          name,
           price: isNaN(price) ? 0 : price,
           stock: isNaN(stock) ? 0 : stock,
-          category: String(category).trim(),
+          category,
         };
       });
 
