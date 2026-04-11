@@ -19,6 +19,7 @@ export default function LoginPage() {
   const [isRegistering, setIsRegistering] = useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [showInstallButton, setShowInstallButton] = useState(false);
+  const [showInstructions, setShowInstructions] = useState(false);
 
   useEffect(() => {
     // Detect if PWA install is available
@@ -35,10 +36,18 @@ export default function LoginPage() {
       setShowInstallButton(false);
     }
     
+    // Show instructions after a few seconds if no automatic install
+    const timer = setTimeout(() => {
+      if (!showInstallButton) {
+        setShowInstructions(true);
+      }
+    }, 3000);
+    
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      clearTimeout(timer);
     };
-  }, []);
+  }, [showInstallButton]);
 
   const handleInstall = async () => {
     if (!deferredPrompt) return;
@@ -127,18 +136,42 @@ export default function LoginPage() {
             {isRegistering ? 'Creá tu cuenta para empezar' : 'Iniciá sesión en tu cuenta'}
           </p>
           
-          {/* Install Button */}
-          {showInstallButton && (
-            <button
-              onClick={handleInstall}
-              className="mt-4 px-4 py-2 bg-emerald-600 text-white rounded-xl text-sm font-medium hover:bg-emerald-700 transition-colors flex items-center gap-2 mx-auto"
-            >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-              </svg>
-              📲 Instalar app
-            </button>
-          )}
+          {/* Install Button or Instructions */}
+          <div className="mt-4">
+            {showInstallButton && (
+              <button
+                onClick={handleInstall}
+                className="px-4 py-2 bg-emerald-600 text-white rounded-xl text-sm font-medium hover:bg-emerald-700 transition-colors flex items-center gap-2 mx-auto"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                📲 Instalar app
+              </button>
+            )}
+            
+            {showInstructions && !showInstallButton && (
+              <button
+                onClick={() => setShowInstructions(!showInstructions)}
+                className="px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 transition-colors flex items-center gap-2 mx-auto"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                </svg>
+                ¿Cómo instalar?
+              </button>
+            )}
+            
+            {showInstructions && !showInstallButton && (
+              <div className="mt-3 p-3 bg-slate-800 rounded-xl text-sm text-slate-300">
+                <p className="font-semibold mb-2 text-white">Para instalar:</p>
+                <ul className="space-y-1">
+                  <li><strong>Celular:</strong> Menú → Agregar a pantalla de inicio</li>
+                  <li><strong>PC:</strong> A la derecha de la URL, click en el ícono de instalar</li>
+                </ul>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Card */}
