@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>StockControl - Guía de Inicio</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+    
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: 'Inter', sans-serif;
+      color: #1e293b;
+      line-height: 1.6;
+      padding: 40px;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    
+    .header {
+      text-align: center;
+      margin-bottom: 40px;
+      padding-bottom: 20px;
+      border-bottom: 2px solid #3b82f6;
+    }
+    
+    .logo {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 60px;
+      height: 60px;
+      background: #3b82f6;
+      border-radius: 12px;
+      margin-bottom: 16px;
+    }
+    
+    .logo svg {
+      width: 32px;
+      height: 32px;
+      color: white;
+    }
+    
+    h1 {
+      font-size: 28px;
+      font-weight: 700;
+      color: #0f172a;
+      margin-bottom: 8px;
+    }
+    
+    .subtitle {
+      color: #64748b;
+      font-size: 16px;
+    }
+    
+    h2 {
+      font-size: 18px;
+      font-weight: 600;
+      color: #1e293b;
+      margin: 32px 0 16px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #e2e8f0;
+    }
+    
+    ol, ul {
+      padding-left: 24px;
+    }
+    
+    li {
+      margin-bottom: 12px;
+    }
+    
+    .step {
+      display: flex;
+      align-items: flex-start;
+      margin-bottom: 20px;
+    }
+    
+    .step-number {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      background: #3b82f6;
+      color: white;
+      border-radius: 50%;
+      font-weight: 600;
+      font-size: 14px;
+      margin-right: 12px;
+      flex-shrink: 0;
+    }
+    
+    .step-content {
+      flex: 1;
+    }
+    
+    .step-title {
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+    
+    .code {
+      display: inline-block;
+      background: #fef3c7;
+      padding: 4px 12px;
+      border-radius: 6px;
+      font-family: monospace;
+      font-weight: 700;
+      color: #92400e;
+      border: 1px solid #f59e0b;
+    }
+    
+    .features {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+      margin: 20px 0;
+    }
+    
+    .feature {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .feature svg {
+      width: 20px;
+      height: 20px;
+      color: #22c55e;
+      flex-shrink: 0;
+    }
+    
+    .footer {
+      margin-top: 40px;
+      padding-top: 20px;
+      border-top: 1px solid #e2e8f0;
+      text-align: center;
+      color: #64748b;
+      font-size: 14px;
+    }
+    
+    .contact {
+      background: #f8fafc;
+      padding: 16px;
+      border-radius: 8px;
+      margin-top: 16px;
+    }
+    
+    @media print {
+      body {
+        padding: 20px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="logo">
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+      </svg>
+    </div>
+    <h1>StockControl</h1>
+    <p class="subtitle">Sistema de Gestión de Inventario</p>
+  </div>
+  
+  <h2>📋 ¿Qué es StockControl?</h2>
+  <p>StockControl es un sistema profesional para gestionar tu inventario. Controlá productos, precios, movimientos de stock y mucho más, todo desde una interfaz simple e intuitiva.</p>
+  
+  <div class="features">
+    <div class="feature">
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
+      <span>Control de productos</span>
+    </div>
+    <div class="feature">
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
+      <span>Precios por producto</span>
+    </div>
+    <div class="feature">
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
+      <span>Importación desde Excel</span>
+    </div>
+    <div class="feature">
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
+      <span>Movimientos de stock</span>
+    </div>
+    <div class="feature">
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
+      <span>Dashboard con estadísticas</span>
+    </div>
+    <div class="feature">
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
+      <span>Valor total del inventario</span>
+    </div>
+    <div class="feature">
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
+      <span>Alertas de stock bajo</span>
+    </div>
+    <div class="feature">
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
+      <span>Exportación a PDF</span>
+    </div>
+  </div>
+  
+  <h2>🚀 Cómo empezar</h2>
+  
+  <div class="step">
+    <div class="step-number">1</div>
+    <div class="step-content">
+      <div class="step-title">Registrate</div>
+      <p>Ir a la URL de la app, completar tu email y contraseña, y usar el código de acceso:</p>
+      <p style="margin-top: 8px;"><span class="code">NUEVO-CODIGO35</span></p>
+    </div>
+  </div>
+  
+  <div class="step">
+    <div class="step-number">2</div>
+    <div class="step-content">
+      <div class="step-title">Importá tus productos</div>
+      <p>Ir a <strong>Productos → Importar Excel</strong> y subir tu archivo con los productos. El sistema detecta automáticamente las columnas (nombre, precio, stock, categoría).</p>
+    </div>
+  </div>
+  
+  <div class="step">
+    <div class="step-number">3</div>
+    <div class="step-content">
+      <div class="step-title">Empezá a usar el sistema</div>
+      <p>¡Listo! Ya podés gestionar tu inventario desde el dashboard.</p>
+    </div>
+  </div>
+  
+  <h2>💡 Tips</h2>
+  <ul>
+    <li><strong>Excel:</strong> Tu archivo puede tener cualquier nombre de columna (nombre/Name, precio/price/costo, stock/cantidad, etc.)</li>
+    <li><strong>Actualizar:</strong> Volvé a importar el mismo Excel para actualizar productos existentes</li>
+    <li><strong>Movimientos:</strong> Registrá cada entrada o salida de stock para tener historial</li>
+  </ul>
+  
+  <h2>❓ Soporte</h2>
+  <p>Si tenés alguna duda o problema, contactame y te ayudo a resolverlo.</p>
+  
+  <div class="footer">
+    <p>© 2026 StockControl</p>
+    <p>Uso ilimitado sin mensualidad</p>
+  </div>
+</body>
+</html>

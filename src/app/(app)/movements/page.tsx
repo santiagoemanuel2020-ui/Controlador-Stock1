@@ -9,6 +9,8 @@ interface Movement {
   type: 'in' | 'out';
   created_at: string;
   product_name?: string;
+  product_price?: number;
+  total_value?: number;
 }
 
 interface Product {
@@ -22,6 +24,9 @@ export default function MovementsPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [showReport, setShowReport] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [reportData, setReportData] = useState<any>(null);
   const [selectedProduct, setSelectedProduct] = useState('');
   const [quantity, setQuantity] = useState('');
   const [movType, setMovType] = useState<'in' | 'out'>('in');
@@ -29,6 +34,7 @@ export default function MovementsPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [filter, setFilter] = useState<'all' | 'in' | 'out'>('all');
+  const [reportLoading, setReportLoading] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -50,6 +56,90 @@ export default function MovementsPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const loadDailyReport = async () => {
+    setReportLoading(true);
+    try {
+      const res = await fetch('/api/reports/daily');
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setReportData(data);
+      setShowReport(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al cargar reporte');
+    } finally {
+      setReportLoading(false);
+    }
+  };
+
+  const printReport = () => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+    
+    // Build table rows
+    let tableRows = '';
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (reportData?.movements || []).forEach((m: any) => {
+      tableRows += `<tr>
+        <td>${m.product_name}</td>
+        <td>${m.type === 'in' ? 'Entrada' : 'Salida'}</td>
+        <td>${m.quantity}</td>
+        <td>$${(m.product_price || 0).toLocaleString('es-AR')}</td>
+        <td class="${m.type === 'in' ? 'positive' : 'negative'}">${m.type === 'in' ? '+' : '-'}$${Math.abs(m.total_value || 0).toLocaleString('es-AR')}</td>
+        <td>${new Date(m.created_at).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}</td>
+      </tr>`;
+    });
+    
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Reporte Diario - StockControl</title>
+        <style>
+          body { font-family: Arial, sans-serif; padding: 20px; }
+          h1 { color: #1e293b; }
+          table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+          th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+          th { background: #f1f5f9; }
+          .positive { color: #16a34a; }
+          .negative { color: #dc2626; }
+          .summary { background: #f8fafc; padding: 15px; border-radius: 8px; margin: 20px 0; }
+        </style>
+      </head>
+      <body>
+        <h1>Reporte Diario - ${reportData?.date || new Date().toLocaleDateString('es-AR')}</h1>
+        <div class="summary">
+          <p><strong>Total Movimientos:</strong> ${reportData?.summary?.totalMovements || 0}</p>
+          <p><strong>Entradas:</strong> ${reportData?.summary?.entries || 0} (${reportData?.summary?.totalUnitsIn || 0} unidades)</p>
+          <p><strong>Salidas:</strong> ${reportData?.summary?.exits || 0} (${reportData?.summary?.totalUnitsOut || 0} unidades)</p>
+          <p><strong>Valor Entradas:</strong> <span class="positive">$${(reportData?.summary?.totalValueIn || 0).toLocaleString('es-AR')}</span></p>
+          <p><strong>Valor Salidas:</strong> <span class="negative">$$${Math.abs(reportData?.summary?.totalValueOut || 0).toLocaleString('es-AR')}</span></p>
+          <p><strong>Balance:</strong> $${(reportData?.summary?.balance || 0).toLocaleString('es-AR')}</p>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Producto</th>
+              <th>Tipo</th>
+              <th>Cantidad</th>
+              <th>Precio Unit.</th>
+              <th>Total</th>
+              <th>Hora</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${tableRows}
+          </tbody>
+        </table>
+        <p style="color: #64748b; font-size: 12px;">Generado por StockControl</p>
+        <script>window.print();</script>
+      </body>
+      </html>
+    `;
+    
+    printWindow.document.write(html);
+    printWindow.document.close();
   };
 
   const handleSubmit = async (e: FormEvent) => {
@@ -106,15 +196,27 @@ export default function MovementsPage() {
           <h1 className="text-2xl font-bold text-slate-900">Movimientos</h1>
           <p className="text-slate-500 mt-1">Historial de entradas y salidas de stock</p>
         </div>
-        <button
-          onClick={() => { setShowModal(true); setError(''); setSuccess(''); }}
-          className="px-4 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 transition-colors flex items-center gap-2 self-start"
-        >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-          </svg>
-          Registrar movimiento
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={loadDailyReport}
+            disabled={reportLoading}
+            className="px-4 py-2.5 bg-emerald-600 text-white rounded-xl text-sm font-medium hover:bg-emerald-700 transition-colors flex items-center gap-2"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            {reportLoading ? 'Cargando...' : 'Reporte Diario'}
+          </button>
+          <button
+            onClick={() => { setShowModal(true); setError(''); setSuccess(''); }}
+            className="px-4 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 transition-colors flex items-center gap-2 self-start"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+            </svg>
+            Registrar movimiento
+          </button>
+        </div>
       </div>
 
       {/* Alerts */}
@@ -202,6 +304,96 @@ export default function MovementsPage() {
       </div>
 
       {/* Modal */}
+      {showReport && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowReport(false)}>
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl animate-fade-in max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between sticky top-0 bg-white">
+              <div>
+                <h2 className="text-lg font-semibold text-slate-900">Reporte del Día</h2>
+                <p className="text-sm text-slate-500">{reportData?.date || new Date().toLocaleDateString('es-AR')}</p>
+              </div>
+              <div className="flex gap-2">
+                <button onClick={printReport} className="px-3 py-1.5 bg-slate-100 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-200 flex items-center gap-1">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                  </svg>
+                  Imprimir
+                </button>
+                <button onClick={() => setShowReport(false)} className="text-slate-400 hover:text-slate-600">
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <div className="p-6">
+              {/* Summary */}
+              <div className="bg-slate-50 rounded-xl p-4 mb-6">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  <div className="text-center">
+                    <p className="text-2xl font-bold text-slate-900">{reportData?.summary?.totalMovements || 0}</p>
+                    <p className="text-sm text-slate-500">Movimientos</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-2xl font-bold text-green-600">{reportData?.summary?.entries || 0}</p>
+                    <p className="text-sm text-slate-500">Entradas</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-2xl font-bold text-red-600">{reportData?.summary?.exits || 0}</p>
+                    <p className="text-sm text-slate-500">Salidas</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-2xl font-bold text-green-600">${(reportData?.summary?.totalValueIn || 0).toLocaleString('es-AR')}</p>
+                    <p className="text-sm text-slate-500">Valor Entradas</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-2xl font-bold text-red-600">${Math.abs(reportData?.summary?.totalValueOut || 0).toLocaleString('es-AR')}</p>
+                    <p className="text-sm text-slate-500">Valor Salidas</p>
+                  </div>
+                  <div className="text-center">
+                    <p className={`text-2xl font-bold ${(reportData?.summary?.balance || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      ${(reportData?.summary?.balance || 0).toLocaleString('es-AR')}
+                    </p>
+                    <p className="text-sm text-slate-500">Balance</p>
+                  </div>
+                </div>
+              </div>
+              {/* Details */}
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-slate-200">
+                      <th className="text-left py-2 px-2">Producto</th>
+                      <th className="text-center py-2 px-2">Tipo</th>
+                      <th className="text-center py-2 px-2">Cant.</th>
+                      <th className="text-right py-2 px-2">Precio</th>
+                      <th className="text-right py-2 px-2">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                    {(reportData?.movements || []).map((m: any) => (
+                      <tr key={m.id} className="border-b border-slate-100">
+                        <td className="py-2 px-2">{m.product_name}</td>
+                        <td className={`text-center py-2 px-2 ${m.type === 'in' ? 'text-green-600' : 'text-red-600'}`}>
+                          {m.type === 'in' ? 'Entrada' : 'Salida'}
+                        </td>
+                        <td className="text-center py-2 px-2">{m.quantity}</td>
+                        <td className="text-right py-2 px-2">${(m.product_price || 0).toLocaleString('es-AR')}</td>
+                        <td className={`text-right py-2 px-2 font-medium ${m.type === 'in' ? 'text-green-600' : 'text-red-600'}`}>
+                          {m.type === 'in' ? '+' : '-'}${Math.abs(m.total_value || 0).toLocaleString('es-AR')}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Movement Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowModal(false)}>
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md animate-fade-in" onClick={(e) => e.stopPropagation()}>

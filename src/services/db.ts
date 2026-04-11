@@ -254,8 +254,62 @@ export async function recordStockMovement(
 }
 
 // ──────────────────────────────────────────────
-// DASHBOARD
+// DAILY REPORT
 // ──────────────────────────────────────────────
+
+export async function getDailyMovements(userId: string, date?: string) {
+  const targetDate = date || new Date().toISOString().split('T')[0];
+  
+  const { data, error } = await getSupabaseAdmin()
+    .from('movements')
+    .select(`
+      *,
+      products(id, name, price)
+    `)
+    .eq('user_id', userId)
+    .gte('created_at', `${targetDate}T00:00:00`)
+    .lt('created_at', `${targetDate}T23:59:59`)
+    .order('created_at', { ascending: false });
+
+  if (error) throw new Error(`Error obteniendo movimientos: ${error.message}`);
+
+  // Process movements to include product prices
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const movementsWithPrices = (data || []).map((m: any) => {
+    const productPrice = m.products?.price || 0;
+    const total = m.quantity * productPrice;
+    return {
+      ...m,
+      product_name: m.products?.name || 'Producto eliminado',
+      product_price: productPrice,
+      total_value: m.type === 'in' ? total : -total,
+    };
+  });
+
+  // Calculate totals
+  const entries = movementsWithPrices.filter(m => m.type === 'in');
+  const exits = movementsWithPrices.filter(m => m.type === 'out');
+  
+  const totalIn = entries.reduce((acc, m) => acc + m.total_value, 0);
+  const totalOut = exits.reduce((acc, m) => acc + m.total_value, 0);
+  const totalUnitsIn = entries.reduce((acc, m) => acc + m.quantity, 0);
+  const totalUnitsOut = exits.reduce((acc, m) => acc + m.quantity, 0);
+
+  return {
+    date: targetDate,
+    movements: movementsWithPrices,
+    summary: {
+      totalMovements: movementsWithPrices.length,
+      entries: entries.length,
+      exits: exits.length,
+      totalUnitsIn,
+      totalUnitsOut,
+      totalValueIn: totalIn,
+      totalValueOut: totalOut,
+      balance: totalIn + totalOut,
+    },
+  };
+}
 
 export async function getDashboardStats(userId: string) {
   const products = await getProducts(userId);
