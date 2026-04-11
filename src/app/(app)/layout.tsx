@@ -1,6 +1,7 @@
 import { getSession } from '@/lib/session';
 import { redirect } from 'next/navigation';
 import Sidebar from '@/components/Sidebar';
+import InstallButton from '@/components/InstallButton';
 
 export default async function DashboardLayout({
   children,
@@ -18,6 +19,7 @@ export default async function DashboardLayout({
       <Sidebar email={session.email} />
       <main className="flex-1 overflow-y-auto">
         <div className="p-6 lg:p-8 max-w-7xl mx-auto">
+          <InstallButton />
           {children}
         </div>
       </main>
