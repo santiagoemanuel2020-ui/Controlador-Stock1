@@ -83,7 +83,7 @@ export default function MovementsPage() {
     (reportData?.movements || []).forEach((m: any) => {
       tableRows += `<tr>
         <td>${m.product_name}</td>
-        <td>${m.type === 'in' ? 'Entrada' : 'Salida'}</td>
+        <td>${m.type === 'in' ? 'Entrada' : 'Venta'}</td>
         <td>${m.quantity}</td>
         <td>$${(m.product_price || 0).toLocaleString('es-AR')}</td>
         <td class="${m.type === 'in' ? 'positive' : 'negative'}">${m.type === 'in' ? '+' : '-'}$${Math.abs(m.total_value || 0).toLocaleString('es-AR')}</td>
@@ -112,9 +112,9 @@ export default function MovementsPage() {
         <div class="summary">
           <p><strong>Total Movimientos:</strong> ${reportData?.summary?.totalMovements || 0}</p>
           <p><strong>Entradas:</strong> ${reportData?.summary?.entries || 0} (${reportData?.summary?.totalUnitsIn || 0} unidades)</p>
-          <p><strong>Salidas:</strong> ${reportData?.summary?.exits || 0} (${reportData?.summary?.totalUnitsOut || 0} unidades)</p>
+          <p><strong>Ventas:</strong> ${reportData?.summary?.exits || 0} (${reportData?.summary?.totalUnitsOut || 0} unidades)</p>
           <p><strong>Valor Entradas:</strong> <span class="positive">$${(reportData?.summary?.totalValueIn || 0).toLocaleString('es-AR')}</span></p>
-          <p><strong>Valor Salidas:</strong> <span class="negative">$$${Math.abs(reportData?.summary?.totalValueOut || 0).toLocaleString('es-AR')}</span></p>
+          <p><strong>Valor Ventas:</strong> <span class="negative">$$${Math.abs(reportData?.summary?.totalValueOut || 0).toLocaleString('es-AR')}</span></p>
           <p><strong>Balance:</strong> $${(reportData?.summary?.balance || 0).toLocaleString('es-AR')}</p>
         </div>
         <table>
@@ -243,7 +243,7 @@ export default function MovementsPage() {
                 : 'bg-white border border-slate-300 text-slate-600 hover:bg-slate-50'
             }`}
           >
-            {f === 'all' ? 'Todos' : f === 'in' ? 'Entradas' : 'Salidas'}
+            {f === 'all' ? 'Todos' : f === 'in' ? 'Entradas' : 'Ventas'}
           </button>
         ))}
       </div>
@@ -289,12 +289,12 @@ export default function MovementsPage() {
                 </div>
                 <div className="text-right">
                   <span className={`text-lg font-bold ${
-                    movement.type === 'in' ? 'text-green-600' : 'text-red-600'
+                    movement.type === 'in' ? 'text-green-600' : 'text-blue-600'
                   }`}>
                     {movement.type === 'in' ? '+' : '-'}{movement.quantity}
                   </span>
                   <p className="text-xs text-slate-400">
-                    {movement.type === 'in' ? 'Entrada' : 'Salida'}
+                    {movement.type === 'in' ? 'Entrada' : 'Venta'}
                   </p>
                 </div>
               </div>
@@ -339,8 +339,8 @@ export default function MovementsPage() {
                     <p className="text-sm text-slate-500">Entradas</p>
                   </div>
                   <div className="text-center">
-                    <p className="text-2xl font-bold text-red-600">{reportData?.summary?.exits || 0}</p>
-                    <p className="text-sm text-slate-500">Salidas</p>
+                    <p className="text-2xl font-bold text-blue-600">{reportData?.summary?.exits || 0}</p>
+                    <p className="text-sm text-slate-500">Ventas</p>
                   </div>
                   <div className="text-center">
                     <p className="text-2xl font-bold text-green-600">${(reportData?.summary?.totalValueIn || 0).toLocaleString('es-AR')}</p>
