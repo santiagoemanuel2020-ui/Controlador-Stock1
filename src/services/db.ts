@@ -264,7 +264,7 @@ export async function getDailyMovements(userId: string, date?: string) {
     .from('movements')
     .select(`
       *,
-      products(id, name, price)
+      products(id, name, price, cost)
     `)
     .eq('user_id', userId)
     .gte('created_at', `${targetDate}T00:00:00`)
@@ -273,16 +273,20 @@ export async function getDailyMovements(userId: string, date?: string) {
 
   if (error) throw new Error(`Error obteniendo movimientos: ${error.message}`);
 
-  // Process movements to include product prices
+  // Process movements to include product prices and calculate profit
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const movementsWithPrices = (data || []).map((m: any) => {
     const productPrice = m.products?.price || 0;
+    const productCost = m.products?.cost || 0;
     const total = m.quantity * productPrice;
+    const profit = m.type === 'out' ? (productPrice - productCost) * m.quantity : 0;
     return {
       ...m,
       product_name: m.products?.name || 'Producto eliminado',
       product_price: productPrice,
+      product_cost: productCost,
       total_value: m.type === 'in' ? total : -total,
+      profit: profit,
     };
   });
 
@@ -294,6 +298,7 @@ export async function getDailyMovements(userId: string, date?: string) {
   const totalOut = exits.reduce((acc, m) => acc + m.total_value, 0);
   const totalUnitsIn = entries.reduce((acc, m) => acc + m.quantity, 0);
   const totalUnitsOut = exits.reduce((acc, m) => acc + m.quantity, 0);
+  const totalProfit = exits.reduce((acc, m) => acc + (m.profit || 0), 0);
 
   return {
     date: targetDate,
@@ -306,6 +311,7 @@ export async function getDailyMovements(userId: string, date?: string) {
       totalUnitsOut,
       totalValueIn: totalIn,
       totalValueOut: totalOut,
+      totalProfit: totalProfit,
       balance: totalIn + totalOut,
     },
   };

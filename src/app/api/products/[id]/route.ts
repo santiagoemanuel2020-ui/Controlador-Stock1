@@ -15,6 +15,7 @@ export async function PUT(
     const product = await updateProduct(params.id, session.userId, {
       name: body.name,
       price: body.price,
+      cost: body.cost,
       stock: body.stock,
       category: body.category,
     });

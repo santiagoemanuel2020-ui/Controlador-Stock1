@@ -5,6 +5,7 @@ import { getSupabaseAdmin } from '@/lib/supabase';
 interface ImportProduct {
   name: string;
   price: number;
+  cost: number;
   stock: number;
   category: string;
 }
@@ -38,10 +39,11 @@ export async function POST(request: NextRequest) {
         return;
       }
       const price = parseFloat(String(p.price)) || 0;
+      const cost = parseFloat(String(p.cost)) || 0;
       const stock = parseInt(String(p.stock)) || 0;
       const category = p.category?.trim() || '';
 
-      validProducts.push({ name, price, stock, category });
+      validProducts.push({ name, price, cost, stock, category });
     });
 
     if (validProducts.length === 0) {
@@ -91,6 +93,7 @@ export async function POST(request: NextRequest) {
           id: existing.id,
           name: p.name,
           price: p.price,
+          cost: p.cost,
           stock: p.stock,
           category: p.category,
         });
@@ -107,6 +110,7 @@ export async function POST(request: NextRequest) {
         productsToInsert.push({
           name: p.name,
           price: p.price,
+          cost: p.cost,
           stock: p.stock,
           category: p.category,
           user_id: session.userId,
@@ -150,6 +154,7 @@ export async function POST(request: NextRequest) {
         .update({
           name: p.name,
           price: p.price,
+          cost: p.cost,
           stock: p.stock,
           category: p.category,
         })

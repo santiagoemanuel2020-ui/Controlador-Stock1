@@ -25,13 +25,14 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { name, price, stock, category } = body;
+    const { name, price, cost, stock, category } = body;
 
     if (!name) return NextResponse.json({ error: 'El nombre es requerido' }, { status: 400 });
 
     const product = await createProduct(session.userId, {
       name,
       price: price || 0,
+      cost: cost || 0,
       stock: stock || 0,
       category: category || '',
     });

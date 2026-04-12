@@ -18,6 +18,7 @@ export interface Product {
   user_id: string;
   name: string;
   price: number;
+  cost: number;
   stock: number;
   category: string;
   created_at: string;

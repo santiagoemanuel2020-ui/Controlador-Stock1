@@ -86,7 +86,9 @@ export default function MovementsPage() {
         <td>${m.type === 'in' ? 'Entrada' : 'Venta'}</td>
         <td>${m.quantity}</td>
         <td>$${(m.product_price || 0).toLocaleString('es-AR')}</td>
+        <td>$${(m.product_cost || 0).toLocaleString('es-AR')}</td>
         <td class="${m.type === 'in' ? 'positive' : 'negative'}">${m.type === 'in' ? '+' : '-'}$${Math.abs(m.total_value || 0).toLocaleString('es-AR')}</td>
+        <td class="${m.type === 'out' ? 'positive' : ''}">${m.type === 'out' ? '+' + (m.profit || 0).toLocaleString('es-AR') : '-'}</td>
         <td>${new Date(m.created_at).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}</td>
       </tr>`;
     });
@@ -113,6 +115,7 @@ export default function MovementsPage() {
           <p><strong>Total Movimientos:</strong> ${reportData?.summary?.totalMovements || 0}</p>
           <p><strong>Entradas:</strong> ${reportData?.summary?.entries || 0} (${reportData?.summary?.totalUnitsIn || 0} unidades)</p>
           <p><strong>Ventas:</strong> ${reportData?.summary?.exits || 0} (${reportData?.summary?.totalUnitsOut || 0} unidades)</p>
+          <p><strong>Ganancia:</strong> <span class="positive">$${(reportData?.summary?.totalProfit || 0).toLocaleString('es-AR')}</span></p>
           <p><strong>Valor Entradas:</strong> <span class="positive">$${(reportData?.summary?.totalValueIn || 0).toLocaleString('es-AR')}</span></p>
           <p><strong>Valor Ventas:</strong> <span class="negative">$$${Math.abs(reportData?.summary?.totalValueOut || 0).toLocaleString('es-AR')}</span></p>
           <p><strong>Balance:</strong> $${(reportData?.summary?.balance || 0).toLocaleString('es-AR')}</p>
@@ -123,8 +126,10 @@ export default function MovementsPage() {
               <th>Producto</th>
               <th>Tipo</th>
               <th>Cantidad</th>
-              <th>Precio Unit.</th>
+              <th>Precio</th>
+              <th>Costo</th>
               <th>Total</th>
+              <th>Ganancia</th>
               <th>Hora</th>
             </tr>
           </thead>
@@ -347,8 +352,12 @@ export default function MovementsPage() {
                     <p className="text-sm text-slate-500">Valor Entradas</p>
                   </div>
                   <div className="text-center">
-                    <p className="text-2xl font-bold text-red-600">${Math.abs(reportData?.summary?.totalValueOut || 0).toLocaleString('es-AR')}</p>
-                    <p className="text-sm text-slate-500">Valor Salidas</p>
+                    <p className="text-2xl font-bold text-blue-600">${Math.abs(reportData?.summary?.totalValueOut || 0).toLocaleString('es-AR')}</p>
+                    <p className="text-sm text-slate-500">Ventas</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-2xl font-bold text-emerald-600">${(reportData?.summary?.totalProfit || 0).toLocaleString('es-AR')}</p>
+                    <p className="text-sm text-slate-500">Ganancia</p>
                   </div>
                   <div className="text-center">
                     <p className={`text-2xl font-bold ${(reportData?.summary?.balance || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
@@ -367,7 +376,9 @@ export default function MovementsPage() {
                       <th className="text-center py-2 px-2">Tipo</th>
                       <th className="text-center py-2 px-2">Cant.</th>
                       <th className="text-right py-2 px-2">Precio</th>
+                      <th className="text-right py-2 px-2">Costo</th>
                       <th className="text-right py-2 px-2">Total</th>
+                      <th className="text-right py-2 px-2">Ganancia</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -375,13 +386,17 @@ export default function MovementsPage() {
                     {(reportData?.movements || []).map((m: any) => (
                       <tr key={m.id} className="border-b border-slate-100">
                         <td className="py-2 px-2">{m.product_name}</td>
-                        <td className={`text-center py-2 px-2 ${m.type === 'in' ? 'text-green-600' : 'text-red-600'}`}>
-                          {m.type === 'in' ? 'Entrada' : 'Salida'}
+                        <td className={`text-center py-2 px-2 ${m.type === 'in' ? 'text-green-600' : 'text-blue-600'}`}>
+                          {m.type === 'in' ? 'Entrada' : 'Venta'}
                         </td>
                         <td className="text-center py-2 px-2">{m.quantity}</td>
                         <td className="text-right py-2 px-2">${(m.product_price || 0).toLocaleString('es-AR')}</td>
-                        <td className={`text-right py-2 px-2 font-medium ${m.type === 'in' ? 'text-green-600' : 'text-red-600'}`}>
+                        <td className="text-right py-2 px-2 text-slate-500">${(m.product_cost || 0).toLocaleString('es-AR')}</td>
+                        <td className={`text-right py-2 px-2 font-medium ${m.type === 'in' ? 'text-green-600' : 'text-blue-600'}`}>
                           {m.type === 'in' ? '+' : '-'}${Math.abs(m.total_value || 0).toLocaleString('es-AR')}
+                        </td>
+                        <td className={`text-right py-2 px-2 font-medium ${m.type === 'out' ? 'text-emerald-600' : 'text-slate-300'}`}>
+                          {m.type === 'out' ? `+${(m.profit || 0).toLocaleString('es-AR')}` : '-'}
                         </td>
                       </tr>
                     ))}
