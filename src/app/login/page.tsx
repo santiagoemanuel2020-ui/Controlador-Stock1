@@ -13,6 +13,7 @@ export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [accessCode, setAccessCode] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [isRegistering, setIsRegistering] = useState(false);
@@ -100,6 +101,7 @@ export default function LoginPage() {
         body: JSON.stringify({
           email: email.trim(),
           password,
+          accessCode: accessCode.trim().toUpperCase(),
         }),
       });
 
@@ -218,6 +220,25 @@ export default function LoginPage() {
                 disabled={loading}
               />
             </div>
+
+            {/* Access Code - Only shown in register mode */}
+            {isRegistering && (
+              <div>
+                <label htmlFor="accessCode" className="block text-sm font-medium text-slate-700 mb-1.5">
+                  Código de acceso
+                </label>
+                <input
+                  id="accessCode"
+                  type="text"
+                  value={accessCode}
+                  onChange={(e) => setAccessCode(e.target.value)}
+                  placeholder="Ej: NUEVO-CODIGO35"
+                  className="w-full px-4 py-3 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all uppercase"
+                  disabled={loading}
+                />
+                <p className="mt-1 text-xs text-slate-500">Ingresá el código que recibiste después de comprar</p>
+              </div>
+            )}
 
             {/* Submit Button */}
             <button
